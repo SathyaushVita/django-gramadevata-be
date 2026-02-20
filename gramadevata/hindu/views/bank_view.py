@@ -1,0 +1,47 @@
+# views.py
+from rest_framework import viewsets, permissions
+from ..models import VillageBank
+from ..serializers import VillageBankSerializer
+from ..utils import save_image_to_azure
+from rest_framework import viewsets, status
+from rest_framework.response import Response
+
+class VillageBankViewSet(viewsets.ModelViewSet):
+    queryset = VillageBank.objects.all()
+    serializer_class = VillageBankSerializer
+
+    def create(self, request, *args, **kwargs):
+            try:
+                image_location = request.data.get('image_location', [])
+                if isinstance(image_location, str):
+                    image_location = [image_location]
+                elif not isinstance(image_location, list):
+                    image_location = []
+
+                request_data = request.data.copy()
+                request_data['image_location'] = []
+
+                serializer = self.get_serializer(data=request_data)
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+
+                saved_images = []
+                entity_type = "village-bank"
+                for image in image_location:
+                    if image and image.strip() and image != "null":
+                        saved_path = save_image_to_azure(
+                            image_data=image,
+                            _id=serializer.instance._id,
+                            name="image_location",
+                            entity_type=entity_type
+                        )
+                        if saved_path:
+                            saved_images.append(saved_path)
+
+                serializer.instance.image_location = saved_images
+                serializer.instance.save()
+
+                return Response(self.get_serializer(serializer.instance).data, status=status.HTTP_201_CREATED)
+
+            except Exception as e:
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
