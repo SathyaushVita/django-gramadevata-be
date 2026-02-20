@@ -1,0 +1,122 @@
+from datetime import datetime
+from rest_framework import status, viewsets
+from rest_framework.response import Response
+from django.core.mail import send_mail
+from django.conf import settings
+from django.utils import timezone
+from datetime import datetime
+
+
+from ..models import AmbulanceFacility
+from ..serializers import AmbulanceFacilitySerializer
+from ..utils import save_image_to_azure  
+class AmbulanceFacilityView(viewsets.ModelViewSet):
+    queryset = AmbulanceFacility.objects.all()
+    serializer_class = AmbulanceFacilitySerializer
+    # permission_classes = [IsAuthenticated] 
+    def list(self, request):
+        filter_kwargs = {}
+
+        for key, value in request.query_params.items():
+            filter_kwargs[key] = value
+
+        filter_kwargs['status'] = 'ACTIVE'
+
+        queryset = AmbulanceFacility.objects.filter(**filter_kwargs)
+        if not queryset.exists():
+            return Response({'message': 'Data not found', 'status': 404})
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    
+    def create(self, request, *args, **kwargs):
+        try:
+            # Extract image_location from request data
+            image_locations = request.data.get('image_location', [])
+
+            if not isinstance(image_locations, list):
+                image_locations = [image_locations]
+
+            # Temporarily set image_location to "null" for serializer
+            request.data['image_location'] = "null"
+
+            # Check and ensure created_at is a datetime object
+            created_at_str = request.data.get('created_at', None)
+            if created_at_str:
+                try:
+                    # If created_at is a string, convert it to datetime
+                    created_at = datetime.fromisoformat(created_at_str)  # ISO 8601 format
+                    request.data['created_at'] = created_at
+                except ValueError:
+                    # If conversion fails, use current time
+                    request.data['created_at'] = timezone.now()
+
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+
+            saved_locations = []
+            entity_type = "ambulance"
+
+            # Process each image location
+            for image_location in image_locations:
+                if image_location and image_location != "null":
+                    saved_location = save_image_to_azure(
+                        image_location,
+                        serializer.instance._id,
+                        serializer.instance.name,
+                        entity_type
+                    )
+                    if saved_location:
+                        saved_locations.append(saved_location)
+
+            if saved_locations:
+                serializer.instance.image_location = saved_locations
+                serializer.instance.save()
+
+            user_id = request.user.id if request.user.is_authenticated else "Anonymous"
+            created_at = serializer.instance.created_at
+
+            # Ensure created_at is a datetime object and convert if it's a string
+            if isinstance(created_at, str):
+                try:
+                    created_at = datetime.fromisoformat(created_at)
+                except ValueError:
+                    created_at = timezone.now()
+
+            from django.utils.timezone import localtime
+            created_time_str = localtime(created_at).strftime("%Y-%m-%d %H:%M:%S")
+
+            send_mail(
+                'New AmbulanceFacility Added',
+                f'User ID: {user_id}\n'
+                f'Created Time: {created_time_str}\n'
+                f'ambulance ID: {serializer.instance._id}\n'
+                f'ambulance Name: {serializer.instance.name}',
+                settings.EMAIL_HOST_USER,
+                [settings.EMAIL_HOST_USER],
+                fail_silently=False,
+            )
+
+            return Response({
+                "message": "success",
+                "result": serializer.data
+            }, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response({
+                "message": "An error occurred.",
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def retrieve(self, request, pk=None):
+        try:
+            instance = AmbulanceFacility.objects.get(_id=pk, status='ACTIVE')
+            serializer = self.get_serializer(instance)
+            return Response(serializer.data)
+        except AmbulanceFacility.DoesNotExist:
+            return Response({
+                "message": "Facility not found",
+                "status": 404
+            }, status=status.HTTP_404_NOT_FOUND)

@@ -1,0 +1,23 @@
+[0;1;32m●[0m nginx.service - A high performance web server and a reverse proxy server
+     Loaded: loaded (/lib/systemd/system/nginx.service; enabled; vendor preset: enabled)
+     Active: [0;1;32mactive (running)[0m since Thu 2025-07-24 14:26:02 UTC; 1h 3min ago
+       Docs: man:nginx(8)
+    Process: 1716 ExecReload=/usr/sbin/nginx -g daemon on; master_process on; -s reload (code=exited, status=0/SUCCESS)
+   Main PID: 710 (nginx)
+      Tasks: 3 (limit: 4686)
+     Memory: 4.8M
+     CGroup: /system.slice/nginx.service
+             ├─ 710 nginx: master process /usr/sbin/nginx -g daemon on; master_process on;
+             ├─1717 nginx: worker process
+             └─1718 nginx: worker process
+
+Jul 24 14:26:01 VM-APIServer01 systemd[1]: Starting A high performance web server and a reverse proxy server...
+Jul 24 14:26:02 VM-APIServer01 systemd[1]: Started A high performance web server and a reverse proxy server.
+Jul 24 14:34:48 VM-APIServer01 systemd[1]: Reloading A high performance web server and a reverse proxy server.
+Jul 24 14:34:48 VM-APIServer01 systemd[1]: Reloaded A high performance web server and a reverse proxy server.
+Jul 24 14:35:16 VM-APIServer01 systemd[1]: Reloading A high performance web server and a reverse proxy server.
+Jul 24 14:35:16 VM-APIServer01 systemd[1]: Reloaded A high performance web server and a reverse proxy server.
+Jul 24 14:43:29 VM-APIServer01 systemd[1]: Reloading A high performance web server and a reverse proxy server.
+Jul 24 14:43:29 VM-APIServer01 systemd[1]: Reloaded A high performance web server and a reverse proxy server.
+Jul 24 15:29:43 VM-APIServer01 systemd[1]: Reloading A high performance web server and a reverse proxy server.
+Jul 24 15:29:45 VM-APIServer01 systemd[1]: Reloaded A high performance web server and a reverse proxy server.
