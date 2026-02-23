@@ -30,8 +30,8 @@ SECRET_KEY = "django-insecure-%7dfr4jw-yr$+t0mwtz%v%aenaknhn3v_il2_mz54#ykhj*-af
 DEBUG = True
 
 
-ALLOWED_HOSTS = ['gm-apiserver01.sts.com', 'gm-apiserver02.sts.com']
-# ALLOWED_HOSTS = [ ]
+# ALLOWED_HOSTS = ['gm-apiserver01.sts.com', 'gm-apiserver02.sts.com']
+ALLOWED_HOSTS = [ ]
 
 
 
@@ -351,8 +351,7 @@ EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL") == "True"
 # }
 
 
-#ip address
+#ip_address
+
 USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-
-

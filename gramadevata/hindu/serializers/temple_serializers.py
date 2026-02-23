@@ -735,41 +735,71 @@ class TempleSearch(serializers.ModelSerializer):
 
 from django.utils.timesince import timesince
 from django.utils import timezone
- 
+from django.core.exceptions import ObjectDoesNotExist
+
+
+
 class InactiveTempleSerializer(serializers.ModelSerializer):
     image_location = serializers.SerializerMethodField()
     user_full_name = serializers.SerializerMethodField()
     relative_time = serializers.SerializerMethodField()
 
+    class Meta:
+        model = Temple
+        fields = "__all__"
+
+    # -----------------------------
+    # Relative Time
+    # -----------------------------
     def get_relative_time(self, instance):
         if not instance.created_at:
             return None
 
         now = timezone.now()
         diff = timesince(instance.created_at, now)
-
         return f"{diff} ago"
 
+    # -----------------------------
+    # User Full Name (Safe Version)
+    # -----------------------------
     def get_user_full_name(self, instance):
-        # Return full name if user exists, else None
-        if instance.user:
-            return instance.user.full_name  # assuming Register model has 'full_name' field
-        return None
+        """
+        Safely return user full name.
+        Prevents crash if Register object is deleted.
+        """
+        try:
+            if instance.user:
+                return instance.user.full_name
+            return None
+        except ObjectDoesNotExist:
+            return None
+        except Exception:
+            return None
 
-
-
-    class Meta:
-        model = Temple
-        fields = "__all__"
+    # -----------------------------
+    # Image Location
+    # -----------------------------
     def get_image_location(self, instance):
         filename = instance.image_location
-        
+
+        if not filename:
+            return []
+
+        # If already list
         if isinstance(filename, list):
             image_paths = filename
+
+        # If stored as string list
         elif isinstance(filename, str):
-            image_paths = filename.strip('[]').replace('"', '').split(',')
-            image_paths = [path.strip() for path in image_paths]  # Clean up any extra spaces
+            image_paths = (
+                filename.strip("[]")
+                .replace('"', "")
+                .split(",")
+            )
+            image_paths = [path.strip() for path in image_paths if path.strip()]
+
         else:
             image_paths = []
 
+        # Convert to binary/base64
         return [image_path_to_binary(path) for path in image_paths]

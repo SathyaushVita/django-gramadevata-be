@@ -1,10 +1,13 @@
 # views.py
 from rest_framework import viewsets, permissions
 from ..models import VillageMarket
-from ..serializers import VillageMarketSerializer
+from ..serializers import VillageMarketSerializer,InactiveVillageMarketSerializer
 from ..utils import save_image_to_azure
 from rest_framework import viewsets, status
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from django.db.models import Q
+
 
 class VillageMarketViewSet(viewsets.ModelViewSet):
     queryset = VillageMarket.objects.all()
@@ -12,23 +15,19 @@ class VillageMarketViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
             try:
-                # Extract image base64 list safely
                 image_location = request.data.get('image_location', [])
                 if isinstance(image_location, str):
                     image_location = [image_location]
                 elif not isinstance(image_location, list):
                     image_location = []
 
-                # Temporarily remove from request for serializer validation
                 request_data = request.data.copy()
                 request_data['image_location'] = []
 
-                # Save initial object without images
                 serializer = self.get_serializer(data=request_data)
                 serializer.is_valid(raise_exception=True)
                 serializer.save()
 
-                # Upload images to Azure
                 saved_images = []
                 entity_type = "village-market"
                 for image in image_location:
@@ -42,7 +41,6 @@ class VillageMarketViewSet(viewsets.ModelViewSet):
                         if saved_path:
                             saved_images.append(saved_path)
 
-                # Update the model instance with image paths
                 serializer.instance.image_location = saved_images
                 serializer.instance.save()
 
@@ -50,3 +48,46 @@ class VillageMarketViewSet(viewsets.ModelViewSet):
 
             except Exception as e:
                 return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+
+
+
+
+class InactiveVillageMarketAPIView(APIView):
+
+    def get(self, request):
+        filter_kwargs = {}
+        search_query = request.query_params.get('search', None)
+
+        for key, value in request.query_params.items():
+            if key != 'search':
+                filter_kwargs[key] = value
+
+        queryset = VillageMarket.objects.filter(
+            status='INACTIVE',
+            **filter_kwargs
+        )
+
+        if search_query:
+            queryset = queryset.filter(
+                Q(name__icontains=search_query) |
+                Q(village_id__name__icontains=search_query) 
+            )
+
+        queryset = queryset.order_by('-created_at')
+
+        if not queryset.exists():
+            return Response(
+                {"message": "Data not found", "status": 404},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = InactiveVillageMarketSerializer(queryset, many=True)
+
+        return Response({
+            "count": queryset.count(),
+            "inactive_markets": serializer.data
+        }, status=status.HTTP_200_OK)

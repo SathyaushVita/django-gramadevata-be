@@ -1,10 +1,13 @@
-# views.py
 from rest_framework import viewsets, permissions
 from ..models import VillageSportsground
-from ..serializers import VillageSportsgroundSerializer
+from ..serializers import VillageSportsgroundSerializer,InactiveVillageSportsgroundSerializer
 from ..utils import save_image_to_azure
 from rest_framework import viewsets, status
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.db.models import Q
 
 class VillageSportsgroundViewSet(viewsets.ModelViewSet):
     queryset = VillageSportsground.objects.all()
@@ -50,3 +53,50 @@ class VillageSportsgroundViewSet(viewsets.ModelViewSet):
 
             except Exception as e:
                 return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+
+
+
+
+
+
+
+class InactiveVillageSportsgroundAPIView(APIView):
+
+
+    def get(self, request):
+        filter_kwargs = {}
+        search_query = request.query_params.get('search', None)
+
+        for key, value in request.query_params.items():
+            if key != 'search':
+                filter_kwargs[key] = value
+
+        queryset = VillageSportsground.objects.filter(
+            status='INACTIVE',
+            **filter_kwargs
+        )
+
+        if search_query:
+            queryset = queryset.filter(
+                Q(name__icontains=search_query) |
+                Q(village_id__name__icontains=search_query) 
+            )
+
+        queryset = queryset.order_by('-created_at')
+
+        if not queryset.exists():
+            return Response(
+                {"message": "Data not found", "status": 404},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = InactiveVillageSportsgroundSerializer(queryset, many=True)
+
+        return Response({
+            "count": queryset.count(),
+            "inactive_sportsgrounds": serializer.data
+        }, status=status.HTTP_200_OK)

@@ -2,7 +2,12 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from ..models import TempleTransport
-from ..serializers import TempleTransportSerializer
+from ..serializers import TempleTransportSerializer,InactiveTransportSerializer
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.db.models import Q
+
 
 class TempleTransportViewSet(viewsets.ModelViewSet):
     queryset = TempleTransport.objects.all()
@@ -48,3 +53,47 @@ class TempleTransportViewSet(viewsets.ModelViewSet):
                 'message': 'Transport record not found',
                 'status': 404
             }, status=404)
+
+
+
+
+
+
+
+class InactiveTransportAPIView(APIView):
+
+
+    def get(self, request):
+        filter_kwargs = {}
+        search_query = request.query_params.get('search', None)
+
+        for key, value in request.query_params.items():
+            if key != 'search':
+                filter_kwargs[key] = value
+
+        queryset = TempleTransport.objects.filter(
+            status='INACTIVE',
+            **filter_kwargs
+        )
+
+        if search_query:
+            queryset = queryset.filter(
+                Q(temple_id__name__icontains=search_query) |
+                Q(village_id__name__icontains=search_query) |
+                Q(transport_type__icontains=search_query)
+            )
+
+        queryset = queryset.order_by('-created_at')
+
+        if not queryset.exists():
+            return Response(
+                {"message": "Data not found", "status": 404},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = InactiveTransportSerializer(queryset, many=True)
+
+        return Response({
+            "count": queryset.count(),
+            "inactive_temple_transport": serializer.data
+        }, status=status.HTTP_200_OK)

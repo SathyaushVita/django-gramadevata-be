@@ -3,11 +3,14 @@ from rest_framework.response import Response
 from django.utils import timezone
 from django.core.mail import send_mail
 from django.conf import settings
-
 from ..models import VillageArtist
-from ..serializers import VillageArtistSerializer
+from ..serializers import VillageArtistSerializer,InactiveVillageArtistSerializer
 from ..utils import save_image_to_azure, save_video_to_azure, save_audio_to_azure
-
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.db.models import Q
+ 
 
 class VillageArtistViewSet(viewsets.ModelViewSet):
     queryset = VillageArtist.objects.all()
@@ -139,3 +142,53 @@ class VillageArtistViewSet(viewsets.ModelViewSet):
                 "message": "An error occurred.",
                 "error": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+
+
+
+
+
+class InactiveVillageArtistAPIView(APIView):
+    """
+    API to get only INACTIVE Village Artists
+    """
+
+    def get(self, request):
+        filter_kwargs = {}
+        search_query = request.query_params.get('search', None)
+
+        # Dynamic filtering (except search)
+        for key, value in request.query_params.items():
+            if key != 'search':
+                filter_kwargs[key] = value
+
+        # Filter only INACTIVE artists
+        queryset = VillageArtist.objects.filter(
+            status='INACTIVE',
+            **filter_kwargs
+        )
+
+        # Search by artist_name or village name
+        if search_query:
+            queryset = queryset.filter(
+                Q(artist_name__icontains=search_query) |
+                Q(village_id__name__icontains=search_query)
+            )
+
+        queryset = queryset.order_by('-created_at')
+
+        if not queryset.exists():
+            return Response(
+                {"message": "Data not found", "status": 404},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = InactiveVillageArtistSerializer(queryset, many=True)
+
+        return Response({
+            "count": queryset.count(),
+            "inactive_village_artists": serializer.data
+        }, status=status.HTTP_200_OK)

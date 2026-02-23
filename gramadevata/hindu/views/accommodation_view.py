@@ -5,8 +5,16 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
 from ..models import Accommodation
-from ..serializers import AccommodationSerializer
+from ..serializers import AccommodationSerializer,InactiveAccommodationSerializer
 from ..utils import save_image_to_azure  
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.db.models import Q
+
+
+
+
 class AccommodationView(viewsets.ModelViewSet):
     queryset = Accommodation.objects.all()
     serializer_class = AccommodationSerializer
@@ -110,3 +118,48 @@ class AccommodationView(viewsets.ModelViewSet):
                 "message": "Hotel not found",
                 "status": 404
             }, status=status.HTTP_404_NOT_FOUND)
+
+
+
+
+
+
+
+
+class InactiveAccommodationAPIView(APIView):
+
+
+    def get(self, request):
+        filter_kwargs = {}
+        search_query = request.query_params.get("search", None)
+
+        for key, value in request.query_params.items():
+            if key != "search":
+                filter_kwargs[key] = value
+
+        queryset = Accommodation.objects.filter(
+            status="INACTIVE",
+            **filter_kwargs
+        )
+
+        if search_query:
+            queryset = queryset.filter(
+                Q(name__icontains=search_query) |
+                Q(owner_name__icontains=search_query) |
+                Q(village_id__name__icontains=search_query) 
+            )
+
+        queryset = queryset.order_by("-created_at")
+
+        if not queryset.exists():
+            return Response(
+                {"message": "Data not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = InactiveAccommodationSerializer(queryset, many=True)
+
+        return Response({
+            "count": queryset.count(),
+            "inactive_accommodations": serializer.data
+        }, status=status.HTTP_200_OK)

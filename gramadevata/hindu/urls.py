@@ -6,7 +6,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 
 router = DefaultRouter(trailing_slash = False)
 router.register('temple',TempleView)
-router.register('temple_main_category', TempleMainCategoryViewSet, basename='temple_main_category')  # this needs a unique basename
+router.register('temple_main_category', TempleMainCategoryViewSet, basename='temple_main_category')  
 
 router.register("templeCategeory",templeCategeoryview)
 router.register("templepriority",TemplePriorityView)
@@ -196,8 +196,24 @@ urlpatterns = [
     path('Inactive_poojastores_by_location',GetInactivePoojaStoresByLocation.as_view(),name='poojastores-by-location'),
     path('Inactive_veterinary_hospitals_by_location',GetInactiveVeterinaryHospitalsByLocation.as_view(),name='veterinary_hospitals-by-location'),
     path('inactive_tour_guide', InactiveTourGuideAPIView.as_view()),
-
+    path('inactive_geographic', InactiveGeographicAPIView.as_view()),
     path('inactive_hospitals', InactiveNearbyHospitalAPIView.as_view()),
+    path('inactive_famous_personality', InactiveFamousPersonalityAPIView.as_view()),
+    path('inactive_development_facility', InactiveVillageDevelopmentFacilityAPIView.as_view()),
+    path('inactive_cultural_profile', InactiveVillageCulturalProfileAPIView.as_view()),
+    path('inactive_village_artist', InactiveVillageArtistAPIView.as_view()),
+    path('inactive_transport', InactiveTransportAPIView.as_view()),
+    path('inactive_sports_ground', InactiveVillageSportsgroundAPIView.as_view()),
+    path('inactive_school', InactiveVillageSchoolAPIView.as_view()),
+    path('inactive_postoffice', InactiveVillagePostOfficeAPIView.as_view()),
+    path('inactive_policestation', InactivePoliceStationAPIView.as_view()),
+    path('inactive_market', InactiveVillageMarketAPIView.as_view()),
+    path('inactive_firestation', InactiveFireStationAPIView.as_view()),
+    path('inactive_college', InactiveVillageCollegeAPIView.as_view()),
+    path('inactive_bank', InactiveVillageBankAPIView.as_view()),
+    path('inactive_ambulance', InactiveAmbulanceFacilityAPIView.as_view()),
+    path('inactive_accommodation', InactiveAccommodationAPIView.as_view()),
+
     path('inactive_restaurants', InactiveRestaurantAPIView.as_view(), name='inactive-restaurants'),
     path('inactive_hotel', InactiveHotelAPIView.as_view(), name='inactive-hotel'),
     path('inactive_poojastores', InactivePoojaStoreAPIView.as_view(), name='inactive-poojastores'),
@@ -205,11 +221,8 @@ urlpatterns = [
     path("tourismplaces_merge/<uuid:tourism_id>",TourismPlaceMergeAPIView.as_view()),
     path("welfarehomes_merge/<uuid:welfare_id>",WelfareHomeMergeAPIView.as_view()),
     path("users/", UsersStatusView.as_view()),
-
-
-
-
-
+    path('status_active/<str:id>',UniversalActivateAPIView.as_view()),
+    path("admin/login/", AdminLoginView.as_view()),
 
 
 

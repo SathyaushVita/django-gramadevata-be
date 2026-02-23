@@ -86,10 +86,9 @@ class Register(AbstractUser):
     mm_mf_image=models.JSONField(db_column='mm_mf_image', null=True, blank=True, default=list)  
     desc=models.TextField(db_column="desc",null=True, blank=True,)
     last_seen = models.DateTimeField(null=True, blank=True)
-    active_count = models.IntegerField(db_column='active_count', default=0)
-    inactive_count = models.IntegerField(db_column='inactive_count', default=0)
+    active_count = models.IntegerField(db_column='active_count', default=0,null=True, blank=True,)
+    inactive_count = models.IntegerField(db_column='inactive_count', default=0,null=True, blank=True,)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
-    # last_login= models.DateTimeField(null=False, default=timezone.now, db_index=True)
 
     class Meta:
         db_table = "user"

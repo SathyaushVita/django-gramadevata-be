@@ -1,10 +1,13 @@
-# views.py
 from rest_framework import viewsets, permissions
 from ..models import VillageCollege
-from ..serializers import VillageCollegeSerializer
+from ..serializers import VillageCollegeSerializer,InactiveVillageCollegeSerializer
 from ..utils import save_image_to_azure
 from rest_framework import viewsets, status
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.db.models import Q
 
 class VillageCollegeViewSet(viewsets.ModelViewSet):
     queryset = VillageCollege.objects.all()
@@ -45,3 +48,48 @@ class VillageCollegeViewSet(viewsets.ModelViewSet):
 
             except Exception as e:
                 return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+
+
+
+
+
+class InactiveVillageCollegeAPIView(APIView):
+
+
+    def get(self, request):
+        filter_kwargs = {}
+        search_query = request.query_params.get('search', None)
+
+        for key, value in request.query_params.items():
+            if key != 'search':
+                filter_kwargs[key] = value
+
+        queryset = VillageCollege.objects.filter(
+            status='INACTIVE',
+            **filter_kwargs
+        )
+
+        if search_query:
+            queryset = queryset.filter(
+                Q(name__icontains=search_query) |
+                Q(village_id__name__icontains=search_query) 
+            )
+
+        queryset = queryset.order_by('-created_at')
+
+        if not queryset.exists():
+            return Response(
+                {"message": "Data not found", "status": 404},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = InactiveVillageCollegeSerializer(queryset, many=True)
+
+        return Response({
+            "count": queryset.count(),
+            "inactive_colleges": serializer.data
+        }, status=status.HTTP_200_OK)

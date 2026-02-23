@@ -19,55 +19,9 @@ from rest_framework.permissions import IsAuthenticated
 import os
 from django.conf import settings
 from django.db.models import Q
-
-
-
-
-# class Registerview(generics.GenericAPIView):
-#     serializer_class = LoginSerializer
-
-#     def post(self, request, *args, **kwargs):
-#         username = request.data.get('username')
-#         if not username:
-#             return Response({"error": "username is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-#         otp = "0000" if username in ["sathayushtechsolutions@gmail.com", "7680822565"] else generate_otp()
-
-#         user = None
-
-#         # Try to match with either email or contact number (even if fields are cleared)
-#         user = Register.objects.filter(Q(email=username) | Q(contact_number=username)).first()
-
-#         if user:
-#             # User exists, just update OTP
-#             user.verification_otp = otp
-#             user.verification_otp_created_time = timezone.now()
-#             user.save()
-#             message = "Login successful and OTP sent successfully"
-#         else:
-#             # Create new user only if not found
-#             user = Register.objects.create(
-#                 username=username,
-#                 verification_otp=otp,
-#                 verification_otp_created_time=timezone.now(),
-#                 email=username if validate_email(username) else None,
-#                 contact_number=username if not validate_email(username) else None
-#             )
-#             message = "OTP sent successfully"
-
-#         # Send OTP via email or SMS
-#         if validate_email(username):
-#             send_email(username, otp)
-#         else:
-#             send_sms(username, otp)
-
-#         return Response({"message": message}, status=status.HTTP_200_OK)
-
-from django.utils import timezone
-from django.db.models import Q
 from rest_framework import generics, status
-from rest_framework.response import Response
-
+from rest_framework_simplejwt.tokens import RefreshToken
+from ..utils import send_welcome_email
 from ..models import Register
 from ..utils import (
     generate_otp,
@@ -124,189 +78,10 @@ class Registerview(generics.GenericAPIView):
         )
     
 
-# class LoginView(generics.GenericAPIView):
-#     serializer_class = VerifySerializer
-#     def post(self, request, *args, **kwargs):
-#         username = request.data.get('username')
-#         verification_otp = request.data.get('verification_otp')
-#         # Check if user exists by either email or contact number
-#         user = None
-#         if validate_email(username):
-#             user = Register.objects.filter(email=username, verification_otp=verification_otp).first() or Register.objects.filter(contact_number=username, verification_otp=verification_otp).first()
-#         else:
-#             user = Register.objects.filter(contact_number=username, verification_otp=verification_otp).first() or Register.objects.filter(email=username, verification_otp=verification_otp).first()
-#         if user:
-#             # Special case for specific email or contact number
-#             if username in ["sathayushtechsolutions@gmail.com", "7680822565"] and verification_otp != "0000":
-#                 return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
-#             # Check OTP expiration
-#             if user.verification_otp_created_time < timezone.now() - timezone.timedelta(hours=24):
-#                 return Response({"error": "OTP expired"}, status=status.HTTP_400_BAD_REQUEST)
-#             # Update user status to ACTIVE
-#             user.status = 'ACTIVE'
-#             profile_pic_link = None
-#             if user.profile_pic:
-#                 profile_pic_link = image_path_to_binary(user.profile_pic)
-#             user.save()
-#             # Generate tokens
-#             refresh = RefreshToken.for_user(user)
-#             access_token = refresh.access_token
-#             return Response({
-#                 'refresh': str(refresh),
-#                 'access': str(access_token),
-#                 'username': user.get_username(),
-#                 'user_id': user.id,
-#                 "is_member": user.is_member,
-#                 "type": user.type,
-#                 "profile_pic": profile_pic_link,
-#                 "full_name": user.full_name
-#             }, status=status.HTTP_200_OK)
-#         else:
-#             return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
+
         
-# from django.utils import timezone
-# from rest_framework import status, generics
-# from rest_framework.response import Response
-# from rest_framework_simplejwt.tokens import RefreshToken
-# from ..utils import send_welcome_email
-# class LoginView(generics.GenericAPIView):
-#     serializer_class = VerifySerializer
-
-#     def post(self, request, *args, **kwargs):
-#         username = request.data.get('username')
-#         verification_otp = request.data.get('verification_otp')
-
-#         user = None
-#         if validate_email(username):
-#             user = Register.objects.filter(
-#                 email=username,
-#                 verification_otp=verification_otp
-#             ).first() or Register.objects.filter(
-#                 contact_number=username,
-#                 verification_otp=verification_otp
-#             ).first()
-#         else:
-#             user = Register.objects.filter(
-#                 contact_number=username,
-#                 verification_otp=verification_otp
-#             ).first() or Register.objects.filter(
-#                 email=username,
-#                 verification_otp=verification_otp
-#             ).first()
-
-#         if not user:
-#             return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
-
-#         # Special admin OTP check
-#         if username in ["sathayushtechsolutions@gmail.com", "7680822565"] and verification_otp != "0000":
-#             return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
-
-#         # OTP expiry check
-#         if user.verification_otp_created_time < timezone.now() - timezone.timedelta(hours=24):
-#             return Response({"error": "OTP expired"}, status=status.HTTP_400_BAD_REQUEST)
-
-#         # 👇 Track first-time activation
-#         was_inactive = user.status != 'ACTIVE'
-
-#         # Activate user
-#         user.status = 'ACTIVE'
-#         user.save()
-
-#         # ✅ Send welcome email ONLY first time
-#         if was_inactive:
-#             send_welcome_email(user.email)
-
-#         # Profile pic
-#         profile_pic_link = None
-#         if user.profile_pic:
-#             profile_pic_link = image_path_to_binary(user.profile_pic)
-
-#         # JWT Tokens
-#         refresh = RefreshToken.for_user(user)
-
-#         return Response({
-#             'refresh': str(refresh),
-#             'access': str(refresh.access_token),
-#             'username': user.get_username(),
-#             'user_id': user.id,
-#             'is_member': user.is_member,
-#             'type': user.type,
-#             'profile_pic': profile_pic_link,
-#             'full_name': user.full_name
-#         }, status=status.HTTP_200_OK)
 
 
-
-from django.utils import timezone
-from rest_framework import status, generics
-from rest_framework.response import Response
-from rest_framework_simplejwt.tokens import RefreshToken
-from ..utils import send_welcome_email
-# class LoginView(generics.GenericAPIView):
-#     serializer_class = VerifySerializer
-
-#     def post(self, request, *args, **kwargs):
-#         username = request.data.get('username')
-#         verification_otp = request.data.get('verification_otp')
-
-#         user = None
-#         if validate_email(username):
-#             user = Register.objects.filter(
-#                 email=username,
-#                 verification_otp=verification_otp
-#             ).first() or Register.objects.filter(
-#                 contact_number=username,
-#                 verification_otp=verification_otp
-#             ).first()
-#         else:
-#             user = Register.objects.filter(
-#                 contact_number=username,
-#                 verification_otp=verification_otp
-#             ).first() or Register.objects.filter(
-#                 email=username,
-#                 verification_otp=verification_otp
-#             ).first()
-
-#         if not user:
-#             return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
-
-#         # Special admin OTP check
-#         if username in ["sathayushtechsolutions@gmail.com", "7680822565"] and verification_otp != "0000":
-#             return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
-
-#         # OTP expiry check
-#         if user.verification_otp_created_time < timezone.now() - timezone.timedelta(hours=24):
-#             return Response({"error": "OTP expired"}, status=status.HTTP_400_BAD_REQUEST)
-
-#         # 👇 Track first-time activation
-#         was_inactive = user.status != 'ACTIVE'
-
-#         # Activate user
-#         user.status = 'ACTIVE'
-#         user.save()
-
-#         # ✅ Send welcome email ONLY first time
-#         if was_inactive:
-#             send_welcome_email(user.email)
-
-#         # Profile pic
-#         profile_pic_link = None
-#         if user.profile_pic:
-#             profile_pic_link = image_path_to_binary(user.profile_pic)
-
-#         # JWT Tokens
-#         refresh = RefreshToken.for_user(user)
-
-#         return Response({
-#             'refresh': str(refresh),
-#             'access': str(refresh.access_token),
-#             'username': user.get_username(),
-#             'user_id': user.id,
-#             'is_member': user.is_member,
-#             'type': user.type,
-#             'profile_pic': profile_pic_link,
-#             'full_name': user.full_name
-#         }, status=status.HTTP_200_OK)
 
 def get_client_ip(request):
     x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
@@ -382,8 +157,6 @@ class LoginView(generics.GenericAPIView):
             "full_name": user.full_name,
             "ip_address": ip_address   # ✅ RETURN IP
         }, status=status.HTTP_200_OK)
-
-
 
 
 # class LoginView(generics.GenericAPIView):
@@ -992,7 +765,6 @@ from django.db.models import Q
 from django.utils import timezone
 from datetime import timedelta
 
-
 class GetProfile(APIView):
 
     def get(self, request):
@@ -1002,10 +774,10 @@ class GetProfile(APIView):
 
             active_time = timezone.now() - timedelta(minutes=5)
 
-            # 🔹 Base queryset (recent first)
+            # 🔹 Base queryset (Recent users first by date_joined)
             queryset = Register.objects.all().order_by('-date_joined')
 
-            # 🔍 Search
+            # 🔍 Search filter
             if search_query:
                 queryset = queryset.filter(
                     Q(username__icontains=search_query) |
@@ -1020,17 +792,21 @@ class GetProfile(APIView):
 
             serializer = profilegetSerializer(queryset, many=True)
 
-            # 📊 COUNTS (GLOBAL)
+            # 📊 GLOBAL COUNTS
             total_users = Register.objects.count()
+
             members_count = Register.objects.filter(
                 is_member=MemberStatus.true.value
             ).count()
+
             non_members_count = Register.objects.filter(
                 is_member=MemberStatus.false.value
             ).count()
+
             male_count = Register.objects.filter(
                 gender=Gender.MALE.value
             ).count()
+
             female_count = Register.objects.filter(
                 gender=Gender.FEMALE.value
             ).count()
@@ -1038,6 +814,7 @@ class GetProfile(APIView):
             active_users = Register.objects.filter(
                 last_seen__gte=active_time
             ).count()
+
             inactive_users = total_users - active_users
 
             data = {
@@ -1294,19 +1071,7 @@ class AdminProfileById(generics.GenericAPIView):
 
 
 
-
-
-
-
-
-#Users active and inactive count and lastseen
-
-
-from datetime import timedelta
-from django.utils import timezone
-from django.db.models import Q
-from rest_framework.views import APIView
-from rest_framework.response import Response
+#usersstatus and active and inactive and last-seen
 
 class UsersStatusView(APIView):
 

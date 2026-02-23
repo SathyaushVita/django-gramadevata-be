@@ -1,11 +1,20 @@
 # views.py
 from rest_framework import viewsets, permissions
 from ..models import VillageCulturalProfile
-from ..serializers import VillageCulturalProfileSerializer
+from ..serializers import VillageCulturalProfileSerializer,InactiveVillageCulturalProfileSerializer
 from ..utils import save_image_to_azure
 from rest_framework import viewsets, status
 from rest_framework.response import Response  
 import uuid
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.db.models import Q
+
+
+
+
+
 class VillageCulturalProfileViewSet(viewsets.ModelViewSet):
     queryset = VillageCulturalProfile.objects.all()
     serializer_class = VillageCulturalProfileSerializer
@@ -82,3 +91,56 @@ class VillageCulturalProfileViewSet(viewsets.ModelViewSet):
 
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+
+
+
+
+
+
+
+
+
+class InactiveVillageCulturalProfileAPIView(APIView):
+    """
+    API to get only INACTIVE Village Cultural Profiles
+    """
+
+    def get(self, request):
+        filter_kwargs = {}
+        search_query = request.query_params.get('search', None)
+
+        # Dynamic filtering (except search)
+        for key, value in request.query_params.items():
+            if key != 'search':
+                filter_kwargs[key] = value
+
+        # Filter only INACTIVE cultural profiles
+        queryset = VillageCulturalProfile.objects.filter(
+            status='INACTIVE',
+            **filter_kwargs
+        )
+
+        # Search by village name
+        if search_query:
+            queryset = queryset.filter(
+                Q(village_id__name__icontains=search_query)
+            )
+
+        queryset = queryset.order_by('-created_at')
+
+        if not queryset.exists():
+            return Response(
+                {"message": "Data not found", "status": 404},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = InactiveVillageCulturalProfileSerializer(queryset, many=True)
+
+        return Response({
+            "count": queryset.count(),
+            "inactive_village_cultural_profiles": serializer.data
+        }, status=status.HTTP_200_OK)
